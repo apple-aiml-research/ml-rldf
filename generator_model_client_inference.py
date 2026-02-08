@@ -7,9 +7,21 @@ import requests
 from argparse import ArgumentParser
 
 parser = ArgumentParser()
-parser.add_argument("--description", type=str, required=True, help="Description of the UI to generate")
-parser.add_argument("--model", type=str, default="rldfcoder-qwen3-sketch", help="Model name registered on server")
-parser.add_argument("--url", type=str, default="http://localhost:11434/api/generate", help="Hosted API endpoint")
+parser.add_argument(
+    "--description", type=str, required=True, help="Description of the UI to generate"
+)
+parser.add_argument(
+    "--model",
+    type=str,
+    default="rldfcoder-qwen3-sketch",
+    help="Model name registered on server",
+)
+parser.add_argument(
+    "--url",
+    type=str,
+    default="http://localhost:11434/api/generate",
+    help="Hosted API endpoint",
+)
 args = parser.parse_args()
 
 # Prompt template for UI generation
@@ -23,21 +35,27 @@ data = {
     "model": args.model,
     "stream": False,
     "prompt": full_prompt,
-    "options": {"num_predict": 4096}
+    "options": {"num_predict": 4096},
 }
 
 # Send request to server
 print(f"Generating UI for: {args.description}")
 print("Waiting for response...\n")
 
-response = requests.post(args.url, json=data)
-
-if response.status_code == 200:
+try:
+    response = requests.post(args.url, json=data, timeout=30)
+    response.raise_for_status()
     result = response.json()["response"]
     print("Generated HTML:")
-    print("="*80)
+    print("=" * 80)
     print(result)
-    print("="*80)
-else:
-    print(f"Error: {response.status_code}")
-    print(response.text)
+    print("=" * 80)
+except requests.RequestException as e:
+    print(f"Network request failed: {e}")
+    exit(1)
+except KeyError:
+    print("Invalid response format: missing 'response' key")
+    exit(1)
+except ValueError as e:
+    print(f"JSON parsing failed: {e}")
+    exit(1)
